@@ -4,12 +4,12 @@
 2. По ссылке \<domen>/report/ Реализуется отчет по всем неработающим ссылкам со значением fixed = False
 
 
-Для запуска проекта\n
-Необходимо установить docker-compose\n
-Выполнить следующие операции:
-pip install -r req.txt
-python manage.py makemigrations
-python manage.py migrate
-sudo docker-compose up
-celery -A screenshot_service worker -l INFO --pool=solo
-python manage.py runserver
+Для запуска проекта:
+1. Необходимо установить docker-compose;
+2. Выполнить следующие операции:
+pip install -r req.txt;
+python manage.py makemigrations;
+python manage.py migrate;
+sudo docker-compose up;
+celery -A screenshot_service worker -l INFO --pool=solo;
+python manage.py runserver;
