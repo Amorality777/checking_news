@@ -5,11 +5,11 @@
 
 
 Для запуска проекта:
-1. Необходимо установить docker-compose;
+1. Необходимо установить docker-compose
 2. Выполнить следующие операции:
-pip install -r req.txt;
-python manage.py makemigrations;
-python manage.py migrate;
-sudo docker-compose up;
-celery -A screenshot_service worker -l INFO --pool=solo;
-python manage.py runserver;
+ - pip install -r req.txt
+ - python manage.py makemigrations
+ - python manage.py migrate
+ - sudo docker-compose up
+ - celery -A screenshot_service worker -l INFO --pool=solo
+ - python manage.py runserver
