@@ -6,5 +6,6 @@ from .tasks import parse
 class ParseNewsView(View):
 
     def get(self, request):
-        task = parse.delay()
+        # task = parse.delay()
+        parse()
         return render(request, 'parse_news.html')

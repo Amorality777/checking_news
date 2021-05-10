@@ -11,8 +11,8 @@ class Topic(models.Model):
 class News(models.Model):
     topic = models.ForeignKey('Topic', on_delete=models.SET_NULL, null=True)
     title = models.CharField(max_length=300)
-    html = models.TextField()
-    date = models.DateField()
+    html = models.TextField(blank=True, null=True)
+    date = models.DateField(blank=True, null=True)
     link = models.URLField()
     checked = models.BooleanField(default=False)
 
