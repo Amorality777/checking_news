@@ -14,6 +14,7 @@ class News(models.Model):
     html = models.TextField()
     date = models.DateField()
     link = models.URLField()
+    checked = models.BooleanField(default=False)
 
     def __str__(self):
         return self.title

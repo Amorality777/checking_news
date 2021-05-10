@@ -2,6 +2,11 @@ import requests
 from bs4 import BeautifulSoup
 from bs4.element import Tag
 
+from logs.settings import setup_logger
+from news_parser.models import Topic, News
+
+log = setup_logger()
+
 
 class NewsParser:
     url = 'https://kodeks.ru/news'
@@ -13,14 +18,29 @@ class NewsParser:
         news_blocks = news_block.find_all('div', attrs={'class': ['news_i ', 'news_tile']}, recursive=False)
         for topic_data in news_blocks:
             topic_name = cls._get_topic_name(topic_data)
-            topic = cls._get_or_create_topic(topic_name)
+            topic = cls._get_topic(topic_name)
             news_list = cls._get_news(topic_data)
             for news in news_list:
-                print(f'{news.text.strip()} {news["href"]}')
+                title = news.text.strip()
+                link = news["href"]
+                news = cls._get_news(topic, title, link)
 
     @staticmethod
-    def _get_or_create_topic(topic_name):
-        topic = ...
+    def _get_news(topic, title, link):
+        news, created = News.objects.get_or_create(topic=topic, title=title, link=link)
+        if created:
+            log.info(f'Добавлена новость: {news}')
+        else:
+            news.checked = False
+            news.save()
+            log.info(f'Повторная проверка новости {news}')
+        return news
+
+    @staticmethod
+    def _get_topic(topic_name):
+        topic, created = Topic.objects.get_or_create(name=topic_name)
+        if created:
+            log.info(f'Создана новая рубрика: {topic}')
         return topic
 
     @classmethod
