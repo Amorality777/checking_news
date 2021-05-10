@@ -15,7 +15,9 @@ class NewsParser:
     url = 'https://kodeks.ru/news'
 
     @classmethod
-    def run(cls):
+    def run(cls) -> None:
+        """Добавляет все новости за полседний день в бд
+        Есть возможность расширить функционал с выбором даты"""
         soup = cls._get_soup()
         news_block = cls._get_news_block(soup)
         news_blocks = news_block.find_all('div', attrs={'class': ['news_i ', 'news_tile']}, recursive=False)
@@ -26,10 +28,11 @@ class NewsParser:
             for news in news_list:
                 title = news.text.strip()
                 link = news["href"]
-                news = cls._get_news(topic, title, link)
+                cls._add_news(topic, title, link)
 
     @staticmethod
-    def _get_news(topic, title, link):
+    def _add_news(topic: Topic, title: str, link: str) -> News:
+        """Сохраняет новость в базу данных"""
         news, created = News.objects.get_or_create(title=title, link=link)
         news.topic = topic
         if created:
@@ -41,7 +44,8 @@ class NewsParser:
         return news
 
     @staticmethod
-    def _get_topic(topic_name):
+    def _get_topic(topic_name: str) -> Topic:
+        """Сохраняет рубрику в базу данных"""
         topic, created = Topic.objects.get_or_create(name=topic_name)
         if created:
             log.info(f'Создана новая рубрика: {topic}')
@@ -97,33 +101,38 @@ class CheckNews:
         self.soup = None
         self.news = None
 
-    def run(self):
+    def run(self) -> None:
+        """Инициализирует проверку непроверенных новостей"""
         self._get_unchecked_news()
         for news in self.queryset:
             self.news = news
-            self._get_soup(news.link)
-            self._update_news(news)
+            res = self._get_soup(news.link)
+            self._update_news(res, news)
             links = self._get_links()
             self._check_links(links)
+            news.checked = True
+            news.save()
 
-    def _get_unchecked_news(self):
+    def _get_unchecked_news(self) -> None:
         """Получение всех непроверенных новостей из базы"""
         self.queryset = News.objects.raw('SELECT "id","link" FROM news_parser_news WHERE checked=false')
 
-    def _get_soup(self, url) -> None:
+    def _get_soup(self, url) -> requests:
         """Инициализация BeautifulSoup объекта"""
         res = requests.get(url)
         self.soup = BeautifulSoup(res.content, features="html.parser")
+        return res
 
-    def _update_news(self, news: News) -> None:
+    def _update_news(self, res: requests, news: News) -> None:
         """Обновляет поля date и html в экземпляре модели News"""
-        news.html = self.soup.contents
+        news.html = res.text
         news.date = self._get_date(self.soup)
         news.save()
         log.info(f'Новость обновлена {news}')
 
     @classmethod
     def _get_date(cls, soup: BeautifulSoup) -> datetime:
+        """Парсинг даты статьи"""
         date = soup.find('div', class_='date-tx').text
         day, month, year = date.split()
         month = cls.months[month]
@@ -133,35 +142,40 @@ class CheckNews:
         """Получение всех тегов a"""
         return self.soup.find_all('a')
 
-    def _check_links(self, links: list):
+    def _check_links(self, links: list) -> None:
+        """Скрипт проверки ссылки"""
         for link_data in links:
             if not link_data.has_attr('href'):
                 log.debug(f'{link_data} без ссылки')
                 continue
             url = link_data['href']
-            if not self.url_is_valid(url):
-                log.warning(f'{url} не валиден')
-                broken_link = BrokenLink.objects.get_or_create(link=url)
-                broken_link.news = self.news
-                broken_link.save()
+            if self.url_is_valid(url):
+                continue
+            log.warning(f'{url} не валиден')
+            broken_link, created = BrokenLink.objects.get_or_create(link=url)
+            broken_link.news = self.news
+            broken_link.save()
+            self._change_on_span(url)
 
     @classmethod
-    def url_is_valid(cls, url):
+    def url_is_valid(cls, url) -> bool:
+        """Проверяет ссылку на валидность"""
         if 'mailto:' in url:
             return True
         elif 'tel:' in url:
             return True
         if 'http' not in url:
             url = cls.domen + url
-        log.debug(url)
         try:
             res = requests.get(url)
-            log.debug(res.status_code)
             return not str(res.status_code).startswith(('4', '5'))
         except (InvalidSchema, InvalidURL, ConnectionError):
             return False
 
-
-    # @staticmethod
-    # def _get_span(url):
-    #     tag = f'<span'
+    def _change_on_span(self, url: str) -> None:
+        """Заменяет ссылку на тег span"""
+        tag = f'<span data="{url}></span>'
+        html = self.news.html
+        self.news.html = html.replace(url, tag)
+        self.news.save()
+        log.info(f'{self.news} html обновлен')

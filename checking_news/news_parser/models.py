@@ -21,7 +21,7 @@ class News(models.Model):
 
 
 class BrokenLink(models.Model):
-    news = models.ForeignKey('News', on_delete=models.CASCADE)
+    news = models.ForeignKey('News', on_delete=models.CASCADE, blank=True, null=True)
     link = models.URLField()
     fixed = models.BooleanField(default=False)
 
